@@ -1,0 +1,73 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: kubecost
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  url: https://kubecost.github.io/cost-analyzer/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: kubecost
+  namespace: kubecost
+spec:
+  chart:
+    spec:
+      chart: cost-analyzer
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: kubecost
+      version: 1.107.1
+  install:
+    createNamespace: true
+  interval: 1m0s
+  values:
+    federatedETL:
+      federatedCluster: true
+      federator:
+        enabled: true
+        primaryClusterID: prow-build-cluster
+      primaryCluster: true
+      useExistingS3Config: false
+    global:
+      grafana:
+        enabled: false
+        proxy: false
+      prometheus:
+        enabled: true
+    kubecostDeployment:
+      queryServiceReplicas: 0
+    kubecostModel:
+      cloudCost:
+        enabled: true
+      containerStatsEnabled: true
+      etlCloudAsset: false
+      federatedStorageConfigSecret: kubecost-object-store
+    kubecostProductConfigs:
+      clusterName: prow-build-cluster
+      productKey:
+        enabled: true
+        secretname: kubecost-product-key
+    networkCosts:
+      config:
+        services:
+          amazon-web-services: true
+      enabled: true
+    prometheus:
+      kube-state-metrics:
+        disabled: true
+      kubeStateMetrics:
+        enabled: false
+      nodeExporter:
+        enabled: false
+      server:
+        global:
+          external_labels:
+            cluster_id: prow-build-cluster
+    serviceAccount:
+      create: false
+      name: kubecost-irsa-s3
